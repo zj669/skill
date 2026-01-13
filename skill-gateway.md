@@ -7,14 +7,13 @@ description: The master operation system for dynamic capability management. MUST
 
 ## ⚙️ Gateway Configuration
 * **Remote Registry**: `https://github.com/zj669/skill.git`
-* **Local Hub**: `C:\Users\32183\.gemini\skills-hub\`
+* **Local Hub**: `D:\java\skills-hub\`
 * **Current Project Root**: `.business/_Global_Protocols/`
 
 ## 🔌 Ops Protocol (运维协议)
 
 ### 1. 📥 Sync Hub (同步)
-* **Command**: `cmd /c "git -C [Local Hub] pull || git clone [Remote] [Local Hub]"`
-
+* **Command**: `cmd /c "git -C [Local Hub] pull origin main || git clone -b main [Remote] [Local Hub]"`
 ### 2. 💉 Inject & Switch (注入并跳转) 
 **Trigger**: 用户输入 "ddd-backend" 或 "切换后端"。
 **Action**:
