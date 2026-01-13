@@ -7,11 +7,13 @@
 ## ✨ 主要特性
 
 - ✅ **精确错误提取**: 自动识别 `[ERROR]`、`FAILURE`、`Exception` 等错误模式
+- ✅ **自动编码检测**: 智能识别 GBK、UTF-8、GB2312 等编码格式，无需手动转换 ⭐ 新增
 - ✅ **堆栈跟踪分析**: 提取完整的异常堆栈信息
 - ✅ **避免输出截断**: 将结果保存到文件，不受终端宽度限制
 - ✅ **智能错误分析**: 自动识别常见错误类型（符号未找到、包缺失等）
-- ✅ **灵活配置**: 支持自定义错误数量、上下文行数等参数
+- ✅ **灵活配置**: 支持自定义错误数量、上下文行数、编码格式等参数
 - ✅ **多种报告格式**: 支持详细报告和简洁的 Bug 报告
+- ✅ **DDD 项目支持**: 自动识别 DDD 分层和特定问题
 
 ## 🚀 快速开始
 
@@ -36,6 +38,9 @@ python script/log_analyzer.py -l path/to/build.log -m 10
 
 # 增加上下文行数（每个错误后 30 行）
 python script/log_analyzer.py -l path/to/build.log -c 30
+
+# 手动指定编码格式（如果自动检测不准确）
+python script/log_analyzer.py -l path/to/build.log -e gbk
 
 # 如果没有找到错误，显示文件末尾 50 行
 python script/log_analyzer.py -l path/to/build.log --tail 50
@@ -155,6 +160,50 @@ Get-ChildItem .business/*/executelogs/*.log | ForEach-Object {
 ```
 
 ## 🐛 常见问题
+
+### 编码相关问题 ⭐ 新增
+
+#### Q: 为什么需要自动编码检测？
+**A**: 在中文 Windows 环境下，许多 Java 工具（Maven、Gradle 等）默认使用 GBK 编码输出日志，即使设置了 `chcp 65001` 和 `-Dfile.encoding=UTF-8`，某些情况下仍可能产生 GBK 编码的日志。如果用 UTF-8 读取，会导致中文乱码或解析失败。
+
+#### Q: 工具如何检测编码？
+**A**: 工具采用三层检测策略：
+1. **优先级 1**: 如果用户通过 `-e` 参数指定编码，直接使用
+2. **优先级 2**: 使用 `chardet` 库自动检测（置信度 > 70%）
+3. **优先级 3**: 依次尝试常用编码（UTF-8、GBK、GB2312、GB18030、UTF-16）
+4. **兜底策略**: 如果都失败，使用 UTF-8 并忽略错误
+
+#### Q: 支持哪些编码格式？
+**A**: 
+- **完全支持**: UTF-8、GBK、GB2312、GB18030、UTF-16
+- **自动识别**: chardet 库支持的所有编码（100+ 种）
+- **手动指定**: 任何 Python 支持的编码格式
+
+#### Q: 如何安装 chardet？
+**A**: 
+```bash
+pip install chardet
+```
+如果没有安装 chardet，工具会自动退化到备用检测方案（尝试常用编码），仍然可以正常工作，只是检测准确度稍低。
+
+#### Q: 看到乱码怎么办？
+**A**: 
+1. 首先尝试手动指定编码：
+   ```bash
+   # 如果是 GBK 编码
+   python script/log_analyzer.py -l path/to/build.log -e gbk
+   
+   # 如果是 GB2312 编码
+   python script/log_analyzer.py -l path/to/build.log -e gb2312
+   ```
+
+2. 如果仍然乱码，可以先转换文件编码：
+   ```powershell
+   # PowerShell 转换编码
+   Get-Content path/to/build.log -Encoding Default | Set-Content path/to/build_utf8.log -Encoding UTF8
+   ```
+
+#### 其他常见问题
 
 ### Q: 脚本提示 "FileNotFoundError"
 **A**: 检查日志文件路径是否正确，确保文件存在。

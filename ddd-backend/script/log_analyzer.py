@@ -10,9 +10,16 @@ import re
 import sys
 import argparse
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from datetime import datetime
+
+# 尝试导入 chardet 用于编码检测
+try:
+    import chardet
+    CHARDET_AVAILABLE = True
+except ImportError:
+    CHARDET_AVAILABLE = False
 
 
 @dataclass
@@ -40,7 +47,7 @@ class LogAnalyzer:
     STACK_TRACE_PATTERN = re.compile(r'^\s+at\s+[\w\.$]+')
     CAUSED_BY_PATTERN = re.compile(r'^Caused by:')
     
-    def __init__(self, log_path: str, max_errors: int = 5, context_lines: int = 20):
+    def __init__(self, log_path: str, max_errors: int = 5, context_lines: int = 20, encoding: Optional[str] = None):
         """
         初始化日志分析器
         
@@ -48,15 +55,68 @@ class LogAnalyzer:
             log_path: 日志文件路径
             max_errors: 最多提取的错误数量
             context_lines: 每个错误后提取的上下文行数
+            encoding: 指定编码格式（可选，留空则自动检测）
         """
         self.log_path = Path(log_path)
         self.max_errors = max_errors
         self.context_lines = context_lines
+        self.encoding = encoding  # 用户指定的编码
+        self.detected_encoding: Optional[str] = None  # 检测到的编码
         self.errors: List[ErrorEntry] = []
         
+    def _detect_encoding(self) -> str:
+        """
+        自动检测文件编码
+        
+        Returns:
+            检测到的编码格式
+        """
+        # 如果用户指定了编码，直接使用
+        if self.encoding:
+            return self.encoding
+        
+        # 读取文件的前几行用于检测（前 10000 字节通常足够）
+        try:
+            with open(self.log_path, 'rb') as f:
+                raw_data = f.read(10000)
+            
+            # 优先使用 chardet 库检测
+            if CHARDET_AVAILABLE and raw_data:
+                result = chardet.detect(raw_data)
+                detected = result.get('encoding', 'utf-8')
+                confidence = result.get('confidence', 0)
+                
+                # 如果置信度较高，使用检测结果
+                if confidence > 0.7:
+                    # 特殊处理：GB2312 和 GBK 都映射到 GBK（更广泛的兼容性）
+                    if detected and detected.upper() in ['GB2312', 'GB18030']:
+                        detected = 'GBK'
+                    print(f"📝 检测到编码: {detected} (置信度: {confidence:.2%})")
+                    return detected
+            
+            # 备用方案：尝试常用编码
+            common_encodings = ['utf-8', 'gbk', 'gb2312', 'gb18030', 'utf-16']
+            
+            for enc in common_encodings:
+                try:
+                    raw_data.decode(enc)
+                    print(f"📝 使用编码: {enc} (备用检测)")
+                    return enc
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            
+            # 如果所有方法都失败，使用 UTF-8 并忽略错误
+            print(f"⚠️  无法确定编码，使用 UTF-8 (忽略错误)")
+            return 'utf-8'
+            
+        except Exception as e:
+            print(f"⚠️  编码检测失败: {e}，使用 UTF-8")
+            return 'utf-8'
+    
     def analyze(self) -> List[ErrorEntry]:
         """
         分析日志文件，提取错误信息
+        支持自动编码检测（GBK、UTF-8、GB2312 等）
         
         Returns:
             错误条目列表
@@ -64,8 +124,19 @@ class LogAnalyzer:
         if not self.log_path.exists():
             raise FileNotFoundError(f"日志文件不存在: {self.log_path}")
         
-        with open(self.log_path, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
+        # 检测编码
+        self.detected_encoding = self._detect_encoding()
+        
+        # 使用检测到的编码读取文件
+        try:
+            with open(self.log_path, 'r', encoding=self.detected_encoding, errors='replace') as f:
+                lines = f.readlines()
+        except Exception as e:
+            # 如果读取失败，使用 UTF-8 并忽略错误
+            print(f"⚠️  使用 {self.detected_encoding} 读取失败: {e}")
+            print(f"📝 回退到 UTF-8 (忽略错误)")
+            with open(self.log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
         
         i = 0
         while i < len(lines) and len(self.errors) < self.max_errors:
@@ -151,6 +222,7 @@ class LogAnalyzer:
             "=" * 80,
             f"错误日志分析报告",
             f"日志文件: {self.log_path}",
+            f"文件编码: {self.detected_encoding or '未检测'}",
             f"分析时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"发现错误: {len(self.errors)} 个",
             "=" * 80,
@@ -435,6 +507,7 @@ def main():
     parser.add_argument('-o', '--output', help='报告输出路径（可选）')
     parser.add_argument('-m', '--max-errors', type=int, default=5, help='最多提取的错误数量（默认: 5）')
     parser.add_argument('-c', '--context-lines', type=int, default=20, help='每个错误的上下文行数（默认: 20）')
+    parser.add_argument('-e', '--encoding', help='指定文件编码（如 utf-8, gbk, gb2312），留空则自动检测')
     parser.add_argument('--bug-report', action='store_true', help='生成简洁的 Bug 报告格式')
     parser.add_argument('--tail', type=int, help='如果没有找到错误，读取文件末尾指定行数')
     
@@ -445,7 +518,8 @@ def main():
         analyzer = LogAnalyzer(
             log_path=args.log,
             max_errors=args.max_errors,
-            context_lines=args.context_lines
+            context_lines=args.context_lines,
+            encoding=args.encoding
         )
         
         # 分析日志
@@ -471,7 +545,9 @@ def main():
             if args.tail:
                 print(f"\n📄 读取文件末尾 {args.tail} 行:\n")
                 log_path = Path(args.log)
-                with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                # 使用检测到的编码
+                detected_enc = analyzer.detected_encoding or 'utf-8'
+                with open(log_path, 'r', encoding=detected_enc, errors='replace') as f:
                     lines = f.readlines()
                     tail_lines = lines[-args.tail:]
                     print("".join(tail_lines))
