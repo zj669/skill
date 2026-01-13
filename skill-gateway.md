@@ -1,6 +1,6 @@
 ---
 name: skill-gateway
-description: The master operation system for dynamic capability management. MUST use this skill to load, activate, switch, or update domain-specific roles (e.g., Backend, Frontend) and sync local skill repositories. Acts as the primary entry point for initializing project contexts.
+description: The master operation system for dynamic capability management. MUST use this skill to load, activate, switch, or update domain-specific roles and sync local skill repositories. Acts as the primary entry point for initializing project contexts.
 ---
 
 # Role: Antigravity Skill Gateway
