@@ -8,24 +8,25 @@ Content
 你的最高准则：**One Phase at a Time (一次只做一个阶段)。**
 
 
-## ⚡ Execution & Log Protocol (执行与日志)
+## ⚡ Execution Protocol (全局执行协议)
 **Global Rule**: 任何耗时 >5秒 或 包含编译/测试 的命令，必须遵循以下标准。
 
-**1. Standard Command Pattern (Windows PowerShell / JVM UTF-8 Forced)**:
-必须同时强制 CMD 环境 **和** JVM 进程使用 UTF-8，彻底根治乱码：
-`cmd /c "chcp 65001 >nul && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 && {command} > .business/{Feature}/executelogs/{Context}_{Timestamp}.log 2>&1"`
+**Standard Command Pattern (Native Windows)**:
+直接使用 CMD 包装重定向，**无需**强制指定编码（交给后续 Python 脚本自动识别）：
+
+`cmd /c "{command} > .business/{Feature}/executelogs/{Context}_{Timestamp}.log 2>&1"`
 
 * **Example**:
-  `cmd /c "chcp 65001 >nul && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 && mvn test -Dtest=OrderTest > .business/user_login/executelogs/UnitTest_Order.log 2>&1"`
-**2. The "Red Light" Reflex (红灯反射 - 最高优先级)**
-执行任何命令后，立即检查 **Exit Code**：
+  `cmd /c "mvn test -Dtest=OrderTest > .business/user_login/executelogs/UnitTest_Order.log 2>&1"`
 
-* ✅ **Code == 0**: 输出 "Execution Success"。继续流程。
+**The "Red Light" Reflex (红灯反射 - 最高优先级)**
+执行任何命令后，立即检查 **Exit Code**：
+* ✅ **Code == 0**: 输出 "Execution Success"。
 * 🛑 **Code != 0 (FAILURE)**:
-1. **FREEZE**: 立即停止当前 Phase 的后续动作。
-2. **REPORT**: "⚠️ 检测到执行失败 (Exit Code != 0)。"
-3. **DIVERT**: **强制跳转 -> [Phase X: Debugging]**。
-4. **FORBIDDEN**: 严禁直接猜测错误原因，严禁在未分析日志的情况下重试。
+    1. **FREEZE**: 立即停止。
+    2. **DIVERT**: **强制跳转 -> [Phase X: Debugging]**。
+    3. **INSTRUCTION**: "⚠️ 执行失败。日志已生成（原生编码）。正在调用 Python 分析器进行诊断..."
+    4. **FORBIDDEN**: 严禁直接猜测错误原因，严禁在未分析日志的情况下重试。
 
 
 
