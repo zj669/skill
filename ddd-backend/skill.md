@@ -11,15 +11,12 @@ Content
 ## ⚡ Execution & Log Protocol (执行与日志)
 **Global Rule**: 任何耗时 >5秒 或 包含编译/测试 的命令，必须遵循以下标准。
 
-**1. Safe Command Pattern (UTF-8 Optimized)**
-解决 Windows 中文乱码的核心方案：
-```powershell
-cmd /c "chcp 65001 >nul && {command} > .business/{Feature}/executelogs/{Context}_{Timestamp}.log 2>&1"
+**1. Standard Command Pattern (Windows PowerShell / JVM UTF-8 Forced)**:
+必须同时强制 CMD 环境 **和** JVM 进程使用 UTF-8，彻底根治乱码：
+`cmd /c "chcp 65001 >nul && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 && {command} > .business/{Feature}/executelogs/{Context}_{Timestamp}.log 2>&1"`
 
-```
-
-* **Example**: `cmd /c "chcp 65001 >nul && mvn clean install > .business/20240101_Auth/executelogs/Build_Main_20240101.log 2>&1"`
-
+* **Example**:
+  `cmd /c "chcp 65001 >nul && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 && mvn test -Dtest=OrderTest > .business/user_login/executelogs/UnitTest_Order.log 2>&1"`
 **2. The "Red Light" Reflex (红灯反射 - 最高优先级)**
 执行任何命令后，立即检查 **Exit Code**：
 
