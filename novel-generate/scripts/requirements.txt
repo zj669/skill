@@ -1,0 +1,10 @@
+# 向量嵌入
+openai>=1.0
+
+# 工具与核心依赖 (适配 NumPy 2.x)
+numpy>=2.0.0
+pandas>=2.2.2
+pyarrow>=17.0.0
+pymilvus>=2.4.0
+bottleneck>=1.4.0  # Pandas 加速依赖
+numexpr>=2.9.0     # Pandas 加速依赖
