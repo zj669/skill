@@ -111,8 +111,7 @@ cmd /c "mvn test > .business/{Feature}/executelogs/Test_Full_{Timestamp}.log 2>&
 ```powershell
 if ($LASTEXITCODE -ne 0) {
     Write-Host "🛑 测试失败！正在分析日志..." -ForegroundColor Red
-    cd .business/_Global_Protocols/ddd-backend/script
-    python analyze.py {Feature}
+    python .business/_Global_Protocols/ddd-backend/script/analyze.py .business/{Feature}/executelogs/Test_Full_{Timestamp}.log .business/{Feature}/Bug_Report.md
 }
 ```
 
@@ -129,8 +128,7 @@ if ($LASTEXITCODE -ne 0) {
 
 ```bash
 # 1. 自动分析日志
-cd .business/_Global_Protocols/ddd-backend/script
-python analyze.py {Feature}
+python .business/_Global_Protocols/ddd-backend/script/analyze.py .business/{Feature}/executelogs/Test_Full.log .business/{Feature}/Bug_Report.md
 
 # 2. 查看错误报告
 cat .business/{Feature}/Bug_Report.md
@@ -141,7 +139,7 @@ cat .business/{Feature}/Bug_Report.md
 mvn test -Dtest={FailedClass}
 
 # 5. 重新分析（如果还失败）
-python analyze.py {Feature} Test_Retry_{Timestamp}.log
+python .business/_Global_Protocols/ddd-backend/script/analyze.py .business/{Feature}/executelogs/Test_Retry_{Timestamp}.log .business/{Feature}/Retry_Report.md
 ```
 
 ---
@@ -331,8 +329,8 @@ Exit Code ≠ 0?
 
 | 文档 | 用途 |
 |------|------|
-| **[05_debugging_protocol.md](./05_debugging_protocol.md)** | 测试失败时的调试流程 |
-| **[PATH_HANDLING.md](../script/PATH_HANDLING.md)** | analyze.py 工具使用 |
+| **[06_debugging_protocol.md](./06_debugging_protocol.md)** | 测试失败时的调试流程 |
+| **[analyze_readme.md](../script/analyze_readme.md)** | analyze.py 工具使用 |
 
 ---
 
@@ -344,7 +342,7 @@ Exit Code ≠ 0?
 cd {ProjectRoot} && cmd /c "mvn test > .business/{Feature}/executelogs/Test_Full.log 2>&1"
 
 # 2. 失败时分析
-cd .business/_Global_Protocols/ddd-backend/script && python analyze.py {Feature}
+python .business/_Global_Protocols/ddd-backend/script/analyze.py {Feature}/executelogs/Test_Full.log {Feature}/Bug_Report.md
 
 # 3. 重跑失败的测试
 mvn test -Dtest={FailedClass}

@@ -107,15 +107,22 @@ Content
 
 * **Status**: 🚨 **ACTIVE INTERRUPT**
 * **Trigger**: Exit Code != 0 或 用户反馈 "报错/Bug"。
-* **Actions**:
-1. **Load**: 读取 `06_debugging_protocol.md`。
-2. **Fetch Log (Crucial)**:
-* 你**必须**读取刚才生成的日志文件。
-* **Command**: 使用 `analyze.py` 脚本分析日志。
 
-3. **Forensics**: 根据日志中的 `Caused by` 或 `Exception` 栈信息分析根因。
-4. **Patch**: 提供修复代码。
-5. **Verify**: 要求重新运行失败的命令以验证修复。
+**⚠️ 铁律：禁止自己编造命令！**
+> 你不知道正确的命令是什么，**必须**先读取调试协议文档。
+> ❌ 禁止: `type xxx.log | findstr /I /C:"ERROR"`（自己编造）
+> ✅ 必须: 先读取 `06_debugging_protocol.md`，按照文档执行
+
+* **Actions**:
+1. **STOP**: 立即停止当前操作！
+2. **READ PROTOCOL**: 读取 `06_debugging_protocol.md` 文档。
+3. **FOLLOW GUIDE**: 严格按照文档中的"标准流程"执行:
+   ```bash
+   python .business/_Global_Protocols/ddd-backend/script/analyze.py {LogFilePath} {ReportOutputPath}
+   ```
+4. **ANALYZE**: 查看生成的 `{ReportOutputPath}`，根据报告分析根因。
+5. **PATCH**: 提供修复代码。
+6. **VERIFY**: 重新运行失败的命令验证修复。
 
 * **Exit**: 修复成功后，询问："是否返回原 Phase 继续开发？"
 

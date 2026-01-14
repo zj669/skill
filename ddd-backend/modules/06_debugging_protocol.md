@@ -14,42 +14,65 @@
 
 ## 1. 🔍 错误诊断 (Diagnosis)
 
+### ⚠️ 重要：必须使用快捷脚本
+
+> **🚨 禁止** 自己编造命令，必须使用 `analyze.py`！
+> **✅ 必须** 使用 `analyze.py` 快捷脚本（已处理路径和编码问题）
+
+### 📁 目录结构说明
+
+```
+项目根目录/
+├── .business/
+│   ├── _Global_Protocols/
+│   │   └── ddd-backend/
+│   │       └── script/
+│   │           └── analyze.py        ← 全能日志分析工具
+│   │
+│   └── {Feature}/                    ← 如: Konwledage
+│       ├── executelogs/              ← 日志存放位置
+│       │   ├── Phase3_Compile.log
+│       │   └── Test_*.log
+│       └── Bug_Report.md             ← 报告输出位置
+```
+
 ### 标准流程
 
 ```bash
-# Step 1: 导航到脚本目录
-cd .business/_Global_Protocols/ddd-backend/script
+# 必须指定日志文件路径 AND 报告输出路径
+python .business/_Global_Protocols/ddd-backend/script/analyze.py {LogFilePath} {ReportOutputPath}
 
-# Step 2: 分析日志（自动选择最新日志）
-python analyze.py {FeatureName}
-
-# Step 3: 查看生成的报告
-# 报告位置: .business/{FeatureName}/Bug_Report.md
+# 示例:
+python .business/_Global_Protocols/ddd-backend/script/analyze.py .business/Konwledage/executelogs/Phase3_Compile.log .business/Konwledage/Bug_Report.md
 ```
 
-### 高级选项
+**报告输出**: 生成在指定的 `{ReportOutputPath}`。
 
+> **⚠️ 注意**: 工具不再提供默认输出目录，必须由 AI 明确指定。
+
+
+### 常见问题排查
+
+**Q: 报告生成在哪里？**
+A: 生成在你命令中指定的 `{ReportOutputPath}` 路径。
+
+**Q: 如何查看更多日志内容？**
+A: 使用交互式搜索模式 (`--grep`)，无需直接阅读原始日志：
 ```bash
-# 指定特定日志文件
-python analyze.py {FeatureName} Build_Phase2_20260114.log
-
-# 手动指定编码（如果自动检测不准确）
-python log_analyzer.py -l LOG_PATH -e gbk -o report.md
-
-# 查看末尾（如果没发现错误）
-python log_analyzer.py -l LOG_PATH --tail 50
+# 搜索关键字并显示前后 10 行
+python analyze.py {LogFilePath} --grep "NullPointer" -c 10
 ```
+这避免了直接 cat/type 大文件导致的输出截断问题。
 
 ### 输出说明
 
 工具会自动：
-- 📝 检测编码（GBK/UTF-8/GB2312）
-- 🔍 提取前 5 个错误及堆栈跟踪
-- 📊 识别错误类型和 DDD 分层
-- 💡 提供针对性修复建议
-- 💾 保存完整报告到 Bug_Report.md
+- 检测编码（GBK/UTF-8/GB2312）
+- 提取前 5 个错误及堆栈跟踪
+- 识别错误类型和 DDD 分层
+- 提供针对性修复建议
 
-📖 **详细文档**: [工具使用指南](../script/PATH_HANDLING.md)
+📖 **详细文档**: [工具使用指南](../script/analyze_readme.md)
 
 ---
 
@@ -130,7 +153,7 @@ graph TD
 cmd /c "chcp 65001 >nul && mvn test -Dtest={FixedClass} > .business/{Feature}/executelogs/Retry_Fix.log 2>&1"
 
 # 分析重试日志
-python analyze.py {Feature} Retry_Fix.log
+python analyze.py {Feature}/executelogs/Retry_Fix.log {Feature}/Bug_Report.md
 ```
 
 ---
@@ -148,34 +171,10 @@ cat .business/{Feature}/Bug_Report.md >> .business/{Feature}/Bug_Analysis.md
 
 | 文档 | 用途 |
 |------|------|
-| **[PATH_HANDLING.md](../script/PATH_HANDLING.md)** | 路径处理和快捷脚本使用指南 |
-| **[README.md](../script/README.md)** | 工具完整功能说明和编码检测 |
+| **[analyze_readme.md](../script/analyze_readme.md)** | 路径处理和快捷脚本使用指南 |
 
 ---
 
-## 🎯 快速参考
-
-### 最常用命令
-```bash
-# 1. 分析错误
-cd .business/_Global_Protocols/ddd-backend/script && python analyze.py {Feature}
-
-# 2. 查看报告
-cat .business/{Feature}/Bug_Report.md
-
-# 3. 修复代码（根据报告建议）
-
-# 4. 验证修复
-mvn test -Dtest={Class}
-```
-
-### 典型场景
-- **编译失败** → 检查 import 和依赖
-- **测试失败** → 检查 Mock 和断言
-- **运行时错误** → 检查空指针和配置
-- **GBK 乱码** → 工具自动检测，无需处理
-
----
 
 **核心原则**: 
 1. 一次性获取错误信息（不重复读取）

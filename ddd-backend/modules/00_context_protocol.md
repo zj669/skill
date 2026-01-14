@@ -73,8 +73,10 @@
       ```bash
       # 从项目根目录执行
       python .business/_Global_Protocols/ddd-backend/script/db_inspector.py \
-          -p . \
-          --profile {ACTIVE_PROFILE} \
+          --host {DB_HOST} \
+          --user {DB_USER} \
+          --password {DB_PASS} \
+          --database {DB_NAME} \
           -o .business/{Feature}/DB_Schema.md
       ```
     * 如果脚本执行失败（数据库不可达），询问用户数据库状态。
