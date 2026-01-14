@@ -43,12 +43,17 @@
 
 ### Step 2: 状态更新 (JSON)
 
-**调用脚本**:
+> [!CAUTION]
+> 🔧 **MUST_EXECUTE** - 你必须实际执行此脚本！
+
+**执行命令**:
 ```bash
 python scripts/state_manager.py --action update_inventory \
   --remove '["灵力恢复丹"]' \
   --add '["王家令牌"]'
 ```
+
+**✅ 执行检查点**: 必须报告更新结果
 
 **更新项目**:
 | 字段 | 更新逻辑 |
@@ -62,7 +67,10 @@ python scripts/state_manager.py --action update_inventory \
 
 ### Step 3: 关系更新 (Neo4j)
 
-**调用脚本**:
+> [!CAUTION]
+> 🔧 **MUST_EXECUTE** - 你必须实际执行此脚本！
+
+**执行命令**:
 ```bash
 python scripts/graph_query.py --action batch_update_relations \
   --changes '[{"from": "叶凡", "to": "王虎", "relation": "KILLED"}]'
@@ -147,12 +155,19 @@ python scripts/state_manager.py --action verify_settlement --chapter {n}
 | 章节摘要入库 | MySQL + Milvus | 长期记忆 |
 | 爽点曲线更新 | Redis | 下一章规划依据 |
 
-## 🛑 Stop Point
-> "第 {chapter} 章数据结算完成。
-> 
-> **变更摘要**:
-> - 背包: {inventory_changes}
-> - 关系: {relation_changes}
-> - 悬念: {hook_changes}
-> 
-> 输入 '下一章' 继续创作，或输入 'Status' 查看当前全局状态。"
+## 🛑 Stop Point / 🔄 Auto-Pilot
+
+**Logic**:
+1. **Check Auto-Mode**:
+   - If `context.auto_mode` is **True**:
+     > 🔧 **MUST_EXECUTE** (Sequence)
+     > ```bash
+     > # 1. 进入下一章
+     > python scripts/state_manager.py --action next_chapter
+     > # 2. 流转回章纲阶段
+     > python scripts/state_manager.py --action update_step --status NEED_PLAN
+     > ```
+     > "🔄 Auto-mode: Settlement complete. Proceeding to NEXT CHAPTER PLAN..."
+   - Else:
+     > "Settlement complete.
+     > Input 'Approve' to proceed to next chapter planning."

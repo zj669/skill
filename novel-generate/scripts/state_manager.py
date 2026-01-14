@@ -54,6 +54,123 @@ def save_character(name: str, data: dict, novel_id: str = None) -> None:
 
 
 # ============================================================
+# Project Status JSON 操作 (Skill 状态源)
+# ============================================================
+
+def sync_project_status(novel_id: str = None) -> dict:
+    """同步状态到 project_status.json"""
+    novel_id = novel_id or settings.app.default_novel_id
+    
+    # 获取各方状态
+    progress = get_progress(novel_id).get("data", {})
+    hooks = get_hooks(novel_id).get("data", {}).get("hooks", [])
+    
+    # 决定当前的 process_step
+    # 这是一个简化逻辑，实际可能需要更复杂的判断，或者由外部传入
+    # 这里我们主要负责同步数据，process_step 的流转由 skill 显式调用 update_step 更新
+    
+    # 尝试读取现有的 project_status.json 以保留 process_step 和 config
+    current_status = {}
+    status_file = Path("project_status.json")
+    if status_file.exists():
+        try:
+            with open(status_file, "r", encoding="utf-8") as f:
+                current_status = json.load(f)
+        except:
+            pass
+            
+    # 构建新状态
+    new_status = {
+        "novel_id": novel_id,
+        "updated_at": datetime.now().isoformat(),
+        "config": {
+            "auto_mode": current_status.get("config", {}).get("auto_mode", False)
+        },
+        "cursor": {
+            "volume": progress.get("current_volume", 1),
+            "chapter": progress.get("current_chapter", 0),
+            "process_step": current_status.get("cursor", {}).get("process_step", "NEED_WORLD")
+        },
+        "context": {
+            "world_initialized": progress.get("world_initialized", False),
+            "last_chapter_status": progress.get("last_chapter_status", "none"),
+            "active_hooks_count": len(hooks)
+        }
+    }
+    
+    # 写入文件
+    with open(status_file, "w", encoding="utf-8") as f:
+        json.dump(new_status, f, ensure_ascii=False, indent=2)
+        
+    return {"status": "SUCCESS", "message": "project_status.json synced", "data": new_status}
+
+
+def toggle_auto(enable: str = None, novel_id: str = None) -> dict:
+    """切换全自动模式 (enable: 'on'/'off' or None to toggle)"""
+    novel_id = novel_id or settings.app.default_novel_id
+    status_file = Path("project_status.json")
+    
+    if not status_file.exists():
+        sync_project_status(novel_id)
+        
+    with open(status_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    current_mode = data.get("config", {}).get("auto_mode", False)
+    
+    if enable:
+        new_mode = (enable.lower() == "true" or enable.lower() == "on")
+    else:
+        new_mode = not current_mode
+        
+    if "config" not in data:
+        data["config"] = {}
+    data["config"]["auto_mode"] = new_mode
+    data["updated_at"] = datetime.now().isoformat()
+    
+    with open(status_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        
+    return {"status": "SUCCESS", "message": f"Auto-mode set to {new_mode}", "auto_mode": new_mode}
+
+
+def update_step(step: str, novel_id: str = None) -> dict:
+    """显式更新 process_step"""
+    novel_id = novel_id or settings.app.default_novel_id
+    
+    status_file = Path("project_status.json")
+    if not status_file.exists():
+        sync_project_status(novel_id)
+        
+    with open(status_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        
+    data["cursor"]["process_step"] = step
+    data["updated_at"] = datetime.now().isoformat()
+    
+    with open(status_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        
+    return {"status": "SUCCESS", "message": f"Step updated to {step}"}
+
+
+def init_project(novel_id: str = None) -> dict:
+    """初始化项目状态"""
+    novel_id = novel_id or settings.app.default_novel_id
+    
+    # 确保数据库有基础记录
+    get_progress(novel_id)
+    
+    # 创建 project_status.json
+    result = sync_project_status(novel_id)
+    
+    # 设置初始步骤
+    update_step("NEED_WORLD", novel_id)
+    
+    return result
+
+
+# ============================================================
 # MySQL 操作 - 进度管理
 # ============================================================
 
@@ -118,6 +235,9 @@ def update_progress(novel_id: str, chapter: int = None, status: str = None,
         f"UPDATE novel_progress SET {', '.join(updates)} WHERE novel_id = %s",
         tuple(params)
     )
+    
+    # 自动同步到 JSON
+    sync_project_status(novel_id)
     
     return {"status": "SUCCESS", "message": "Progress updated"}
 
@@ -468,6 +588,21 @@ def save_summary(novel_id: str, chapter: int, summary: str) -> dict:
     return {"status": "SUCCESS", "message": f"Summary saved for chapter {chapter}"}
 
 
+def get_chapter_summary(novel_id: str, chapter: int) -> dict:
+    """获取章节摘要"""
+    novel_id = novel_id or settings.app.default_novel_id
+    mysql = get_mysql()
+    
+    row = mysql.fetch_one(
+        "SELECT summary FROM chapter_summary WHERE novel_id = %s AND chapter_num = %s",
+        (novel_id, chapter)
+    )
+    
+    if row:
+        return {"status": "SUCCESS", "data": row["summary"]}
+    return {"status": "NOT_FOUND", "data": ""}
+
+
 def verify_settlement(novel_id: str, chapter: int) -> dict:
     """验证数据结算完整性"""
     novel_id = novel_id or settings.app.default_novel_id
@@ -551,6 +686,7 @@ def main():
     parser.add_argument("--meta_data", help="Event meta data (JSON)")
     parser.add_argument("--status", help="Chapter status")
     parser.add_argument("--character_name", default="protagonist", help="Character name")
+    parser.add_argument("--enable", help="Enable auto mode (on/off)")
     
     args = parser.parse_args()
     novel_id = args.novel_id or settings.app.default_novel_id
@@ -591,6 +727,12 @@ def main():
         ),
         "save_summary": lambda: save_summary(novel_id, args.chapter, args.summary),
         "verify_settlement": lambda: verify_settlement(novel_id, args.chapter),
+        # 新增项目状态管理
+        "sync_project_status": lambda: sync_project_status(novel_id),
+        "update_step": lambda: update_step(args.status, novel_id),
+        "init_project": lambda: init_project(novel_id),
+        "toggle_auto": lambda: toggle_auto(args.enable, novel_id),
+        "next_chapter": lambda: next_chapter(novel_id),
     }
     
     if args.action in action_map:
@@ -600,6 +742,41 @@ def main():
     else:
         print(json.dumps({"status": "FAILED", "message": f"Unknown action: {args.action}"}))
         sys.exit(1)
+
+
+
+def next_chapter(novel_id: str = None) -> dict:
+    """进入下一章 (章节号+1)"""
+    novel_id = novel_id or settings.app.default_novel_id
+    status_file = Path("project_status.json")
+    
+    # 1. 更新数据库 ensure persistence
+    if not status_file.exists():
+        sync_project_status(novel_id)
+        
+    with open(status_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        
+    current_chap = data.get("cursor", {}).get("chapter", 0)
+    new_chap = current_chap + 1
+    
+    data["cursor"]["chapter"] = new_chap
+    data["updated_at"] = datetime.now().isoformat()
+    
+    # Update DB progress too
+    try:
+        mysql = get_mysql()
+        mysql.execute(
+            "UPDATE novel_progress SET current_chapter = %s WHERE novel_id = %s",
+            (new_chap, novel_id)
+        )
+    except:
+        pass
+    
+    with open(status_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        
+    return {"status": "SUCCESS", "message": f"Moved to chapter {new_chap}", "chapter": new_chap}
 
 
 if __name__ == "__main__":

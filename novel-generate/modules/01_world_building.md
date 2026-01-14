@@ -91,29 +91,7 @@ python scripts/state_manager.py --action init_character --json "{json_data}"
 
 ---
 
-### Step 4: 剧情架构总览 (Plot Architecture)
 
-**基于三幕式结构生成**:
-```markdown
-## 开篇卷 (第1-50章)
-- **目标**: 主角从凡人到筑基
-- **核心冲突**: 生存困境
-- **高潮**: 筑基突破
-
-## 中盘卷 (第51-150章)
-- **目标**: 主角在宗门崛起
-- **核心冲突**: 门派斗争
-- **高潮**: 晋升核心弟子
-
-## 大结局 (第151-300章)
-- **目标**: 主角问鼎修仙界
-- **核心冲突**: 终极反派
-- **高潮**: 飞升/破碎虚空
-```
-
-**输出**: `outlines/novel_architecture.md`
-
----
 
 ## 📄 交付产物清单
 
@@ -126,12 +104,16 @@ python scripts/state_manager.py --action init_character --json "{json_data}"
 
 ---
 
-## 🛑 Stop Point
-> "世界观构建完成。
-> 
-> **请审核以下内容**:
-> 1. `world_bible/levels.md` - 境界体系是否合理
-> 2. `char_cards/protagonist.json` - 主角初始属性是否正确
-> 3. `outlines/novel_architecture.md` - 剧情架构是否符合预期
-> 
-> 输入 'Approve' 进入剧情编排阶段，或提出修改意见。"
+## 🛑 Stop Point / 🔄 Auto-Pilot
+
+**Logic**:
+1. **Check Auto-Mode**:
+   - If `context.auto_mode` is **True**:
+     > 🔧 **MUST_EXECUTE**
+     > ```bash
+     > python scripts/state_manager.py --action update_step --status NEED_OUTLINE
+     > ```
+     > "🔄 Auto-mode: World built. Proceeding to OUTLINE..."
+   - Else:
+     > "World building complete. Please review artifacts.
+     > Input 'Approve' to enter OUTLINE phase."

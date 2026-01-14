@@ -1,0 +1,17 @@
+{
+  "novel_id": "novel_001",
+  "updated_at": "2026-01-14T18:08:38.508265",
+  "cursor": {
+    "volume": 1,
+    "chapter": 2,
+    "process_step": "NEED_WORLD"
+  },
+  "context": {
+    "world_initialized": true,
+    "last_chapter_status": "drafted",
+    "active_hooks_count": 2
+  },
+  "config": {
+    "auto_mode": true
+  }
+}
